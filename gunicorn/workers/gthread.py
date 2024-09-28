@@ -118,6 +118,9 @@ class ThreadWorker(base.Worker):
 
     def accept(self, server, listener):
         try:
+            if self.nr_conns >= self.worker_connections:
+                return
+
             sock, client = listener.accept()
             # initialize the connection object
             conn = TConn(self.cfg, sock, client, server)
@@ -217,6 +220,11 @@ class ThreadWorker(base.Worker):
                                       return_when=futures.FIRST_COMPLETED)
             else:
                 # wait for a request to finish
+                events = self.poller.select(0.0)
+                for key, _ in events:
+                    callback = key.data
+                    callback(key.fileobj)
+
                 result = futures.wait(self.futures, timeout=1.0,
                                       return_when=futures.FIRST_COMPLETED)
 
